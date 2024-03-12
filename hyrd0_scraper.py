@@ -29,7 +29,7 @@ info_handler.setFormatter(info_formatter)
 log.addHandler(info_handler)
 TRACKS_TXT = "tracks.txt"
 MISSING_TXT = "missing.txt"
-LOADED_TXT = "loaded.txt"
+SCRAPED_TXT = "scraped.txt"
 URLS_TXT = "url.txt"
 
 
@@ -46,13 +46,13 @@ class Track:
         self._filename = f"{self.artist} - {self.title}.{self.filetype}"
 
     def __str__(self) -> str:
-        return f"{self.id} {self.artist} - {self.title} {self.duration}"
+        return f"{self.id}\t{self.artist} - {self.title}\t{self.duration}"
 
     def artist_title(self) -> str:
         return f" {self.artist} - {self.title}"
 
     def with_url(self) -> str:
-        return f"{self.artist} - {self.title} {self.duration} {self.url}"
+        return f"{self.artist} - {self.title}\t{self.duration}\t{self.url}"
 
     @property
     def filename(self) -> str:
@@ -99,7 +99,7 @@ class TrackDownloader:
                             async for chunk in response.content.iter_any():
                                 await f.write(chunk)
                         log.info("%s: Downloaded and saved: %s", self.name, mp3_path)
-                        self.write_loaded(track.with_url() + "\n")
+                        self.write_scraped(track.with_url() + "\n")
                         self.write_id3_tags(mp3_path, track)
                     else:
                         self.write_missing(track.artist_title() + "\n")
@@ -124,12 +124,12 @@ class TrackDownloader:
             log.error("An error occurred while writing ID3 tags: %s", str(e))
 
     @staticmethod
-    def write_loaded(value: str):
+    def write_scraped(value: str):
         try:
-            with open(LOADED_TXT, "a+") as f:
+            with open(SCRAPED_TXT, "a+") as f:
                 f.write(value)
         except Exception as e:
-            log.error("An error occurred while writing to loaded.txt: %s", str(e))
+            log.error("An error occurred while writing to scraped.txt: %s", str(e))
             log.debug("Exception type is: %s", str(type(e)))
 
     @staticmethod
@@ -209,7 +209,7 @@ class Hydr0Browser:
         return res
 
 
-def define_tracks(queue: Queue):
+def define_tracks(queue: Queue, download=False):
     browser = Hydr0Browser()
 
     def add_to_queue(track: Track):
@@ -276,24 +276,35 @@ def define_tracks(queue: Queue):
                 TrackDownloader.write_missing(line)
                 continue
 
-            for track in tracks:
-                add_to_queue(track)
+            if download:
+                for track in tracks:
+                    add_to_queue(track)
+            else:
+                TrackDownloader.write_scraped(track.with_url() + "\n")
 
 
-def main(n=5):
+def main(n=5, download=False):
     log.debug("Testing if debug is working!")
+    log.debug("Download is set to: %s", str(download))
     download_queue = Queue()
-    [TrackDownloader(download_queue, i) for i in range(n)]
-    define_tracks(download_queue)
-    [download_queue.put(None) for _ in range(n)]
-    download_queue.join()
+    if download:
+        [TrackDownloader(download_queue, i) for i in range(n)]
+    define_tracks(download_queue, download)
+    if download:
+        [download_queue.put(None) for _ in range(n)]
+        download_queue.join()
 
 
 def download_from_txt(file, n=5):
     download_queue = Queue()
     with open(file, "r") as f:
         for line in f:
-            track = Track(url=line)
+            line = line.split("\t")
+            if len(line) < 3:
+                continue
+            artist_title, duration, url = line
+            artist, title = artist_title.split(" - ")[:2]
+            track = Track(artist=artist, title=title, duration=duration, url=url)
             download_queue.put(track)
     [TrackDownloader(download_queue, i) for i in range(n)]
     [download_queue.put(None) for _ in range(n)]
@@ -304,9 +315,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Process tracks and download them.")
     parser.add_argument("-f", "--file", help="Path to the file containing tracks.")
     parser.add_argument("-n", "--nodes", help="number of nodes", type=int, default=5)
+    parser.add_argument(
+        "-d",
+        "--download",
+        action="store_true",
+    )
     args = parser.parse_args()
 
     if args.file:
         download_from_txt(args.file, args.nodes)
     else:
-        main(args.nodes)
+        main(args.nodes, args.download)
