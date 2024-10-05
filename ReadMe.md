@@ -1,5 +1,5 @@
 # Hydr0 Scraper
-Hydr0 Scraper is a Python application designed to scrape download links from the webpage [hydr0.org](https://hydr0.org). While it could be theoretically used for accessing copyrighted materials, the intention behind this project is to demonstrate web scraping techniques and provide a fun learning experience rather than promote piracy.
+Hydr0 Scraper is a Python application designed to scrape download links from the webpage [hydr0.org](https://hydr0.org). The intention behind this project is to demonstrate web scraping techniques and provide a fun learning experience. 
 
 ## Installation
 To install and run Hydr0 Scraper, follow these steps:
