@@ -108,5 +108,3 @@ Please note that while the tool facilitates access to files hosted on the websit
 # Disclaimer
 
 While Hydr0 Scraper can technically be used to access copyrighted materials, the project is intended for educational purposes only. The developers do not endorse or encourage any illegal activities. Please respect intellectual property rights and use this tool responsibly.
-
-Feel free to adjust the content according to your preferences and add any additional sections or information you think might be relevant.
